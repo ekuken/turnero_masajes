@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Administración · Cuerpo &amp; Alma</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fdf7f5">
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+  <div id="cargando-inicial" class="cargando-bloque" style="padding-top:30vh"><span class="spinner"></span></div>
+
+  <div id="sin-config" hidden class="aviso-config">
+    <h2>Falta conectar la base de datos</h2>
+    <p>Completá <code>js/config.js</code> con la URL y la anon key de Supabase. Los pasos están en <code>README.md</code>.</p>
+  </div>
+
+  <!-- Ingreso -->
+  <main id="pantalla-login" class="login" hidden>
+    <form id="form-login" class="login-caja" novalidate>
+      <h1>Administración</h1>
+      <p class="reserva-sub">Ingresá con tu cuenta para gestionar la agenda.</p>
+      <div class="error-form" id="error-login" hidden></div>
+      <div class="campo"><label for="l-email">Email</label><input id="l-email" name="email" type="email" autocomplete="username" required></div>
+      <div class="campo"><label for="l-pass">Contraseña</label><input id="l-pass" name="password" type="password" autocomplete="current-password" required></div>
+      <button type="submit" class="btn btn-pri btn-bloque">Ingresar</button>
+      <p class="leyenda" style="text-align:center"><a href="index.html">Volver al sitio</a></p>
+    </form>
+  </main>
+
+  <!-- Panel -->
+  <div id="app" class="app" hidden>
+    <aside class="lateral" aria-label="Menú">
+      <a class="marca lateral-marca" href="#/inicio">
+        <img class="marca-signo" src="img/logo.png" alt="" width="30" height="30">
+        <span id="lateral-nombre">Panel</span>
+      </a>
+      <nav id="menu" class="menu"></nav>
+      <div class="lateral-pie">
+        <a class="menu-item" href="index.html" target="_blank" rel="noopener"><span class="menu-txt">Ver sitio público</span></a>
+        <button type="button" class="menu-item" id="btn-salir"><span class="menu-txt">Salir</span></button>
+      </div>
+    </aside>
+
+    <div class="principal">
+      <header class="barra">
+        <h1 id="titulo-vista" class="barra-titulo">Inicio</h1>
+        <form class="buscador" id="form-buscar" role="search">
+          <label class="oculto-visual" for="buscar-global">Buscar turnos o clientes</label>
+          <input id="buscar-global" type="search" placeholder="Buscar cliente o teléfono" autocomplete="off">
+        </form>
+        <button type="button" class="btn btn-pri" id="btn-nuevo-turno"></button>
+      </header>
+      <main id="vista" class="vista" tabindex="-1"></main>
+    </div>
+
+    <nav class="nav-movil" id="nav-movil" aria-label="Menú principal"></nav>
+  </div>
+
+  <script type="module" src="js/admin/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mis turnos · Cuerpo &amp; Alma</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#fdf7f5">
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="cabecera con-borde">
+    <div class="contenedor">
+      <a class="marca" href="index.html">
+        <img class="marca-signo" src="img/logo.png" alt="" width="30" height="30">
+        <span id="nombre-negocio">Inicio</span>
+      </a>
+      <nav class="nav"><a class="btn btn-pri btn-chico" href="index.html#reservar">Reservar turno</a></nav>
+    </div>
+  </header>
+
+  <main class="pagina-simple">
+    <div class="contenedor">
+      <h1 style="font-size:clamp(2rem,4.5vw,3rem)">Mis turnos</h1>
+
+      <div id="sin-config" hidden class="aviso-config">
+        <p>El sistema todavía no está conectado a la base de datos.</p>
+      </div>
+
+      <section class="tarjeta form-consulta" id="bloque-consulta">
+        <p class="reserva-sub">Ingresá el código que recibiste al reservar y tu teléfono para ver, consultar el historial o cancelar tus turnos.</p>
+        <form id="form-consulta" novalidate>
+          <div class="error-form" id="error-consulta" hidden></div>
+          <div class="campo">
+            <label for="c-codigo">Código de turno</label>
+            <input id="c-codigo" name="codigo" autocomplete="off" autocapitalize="characters" maxlength="12" required placeholder="Ej: 4F7A92C1" style="text-transform:uppercase;letter-spacing:.08em">
+          </div>
+          <div class="campo">
+            <label for="c-telefono">Teléfono con el que reservaste</label>
+            <input id="c-telefono" name="telefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="25" required>
+          </div>
+          <button type="submit" class="btn btn-pri btn-bloque">Ver mis turnos</button>
+        </form>
+      </section>
+
+      <section id="bloque-turnos" hidden>
+        <div class="seccion-cab" style="margin-top:1rem">
+          <p id="saludo"></p>
+          <button type="button" class="btn btn-sec btn-chico" id="btn-salir">Consultar otro turno</button>
+        </div>
+        <div class="tarjeta" style="margin-bottom:1.5rem">
+          <h2 style="font-size:1.4rem">Próximos</h2>
+          <div id="lista-proximos"></div>
+        </div>
+        <div class="tarjeta">
+          <h2 style="font-size:1.4rem">Historial</h2>
+          <div id="lista-historial"></div>
+        </div>
+        <p class="nota" id="politica" hidden style="margin-top:1.5rem"></p>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="js/mis-turnos.js"></script>
+</body>
+</html>
