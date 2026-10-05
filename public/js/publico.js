@@ -361,6 +361,8 @@ function validarDatos(d) {
 function pasoResumen() {
   const s = servicioActual();
   const d = estado.datos;
+  const pct = INFO.negocio.sena_porcentaje || 0;
+  const sena = pct > 0 && s.precio > 0 ? Math.round(s.precio * pct / 100) : 0;
   cuerpo.innerHTML = `
     <h3 class="reserva-titulo">Revisá tu turno</h3>
     <p class="reserva-sub">Si está todo bien, confirmalo.</p>
@@ -370,8 +372,10 @@ function pasoResumen() {
       <dt>Hora</dt><dd>${esc(estado.hora)} h</dd>
       <dt>Duración</dt><dd>${duracionTxt(s.duracion)}</dd>
       <dt>Precio</dt><dd>${dinero(s.precio, INFO.negocio.moneda)}</dd>
+      ${sena ? `<dt>Seña (${pct}%)</dt><dd>${dinero(sena, INFO.negocio.moneda)}</dd>` : ''}
       <dt>A nombre de</dt><dd>${esc(d.nombre)} ${esc(d.apellido)} · ${esc(d.telefono)}</dd>
     </dl>
+    ${sena ? `<p class="nota">Para confirmar el turno se pide una seña del ${pct}% por transferencia. Al reservar te mostramos los datos para pagarla.</p>` : ''}
     ${INFO.negocio.politica_cancelacion ? `<p class="nota">${esc(INFO.negocio.politica_cancelacion)}</p>` : ''}
     <div class="error-form" id="error-confirmar" hidden></div>
     <div class="reserva-pie">
@@ -427,8 +431,15 @@ function pasoExito() {
   cuerpo.innerHTML = `
     <div class="exito">
       <div class="exito-signo"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-      <h3 class="reserva-titulo">¡Turno reservado correctamente!</h3>
-      ${r.estado === 'pendiente' ? '<p class="reserva-sub">Vamos a confirmarte el turno a la brevedad.</p>' : '<p class="reserva-sub">Te esperamos.</p>'}
+      <h3 class="reserva-titulo">${r.sena ? '¡Turno reservado! Falta la seña' : '¡Turno reservado correctamente!'}</h3>
+      ${r.sena ? '<p class="reserva-sub">Tu horario queda reservado. Se confirma cuando recibimos la seña.</p>'
+        : r.estado === 'pendiente' ? '<p class="reserva-sub">Vamos a confirmarte el turno a la brevedad.</p>' : '<p class="reserva-sub">Te esperamos.</p>'}
+      ${r.sena ? `
+        <div class="caja-sena">
+          <p>Transferí la seña de <b>${dinero(r.sena, n.moneda)}</b> (${r.sena_porcentaje}% del precio)${r.datos_transferencia ? ' a:' : '.'}</p>
+          ${r.datos_transferencia ? `<p class="datos-transferencia">${esc(r.datos_transferencia)}</p>` : ''}
+          ${n.whatsapp ? `<a class="btn btn-pri" href="${esc(linkWhatsApp(n.whatsapp, `Hola, te envío el comprobante de la seña del turno ${r.codigo} (${r.servicio}, ${fechaLarga(r.fecha)} ${r.hora} h).`))}" target="_blank" rel="noopener">Enviar comprobante por WhatsApp</a>` : '<p>Después envianos el comprobante.</p>'}
+        </div>` : ''}
       <dl class="resumen">
         <dt>Servicio</dt><dd>${esc(r.servicio)}</dd>
         <dt>Fecha</dt><dd>${esc(capitalizar(fechaLarga(r.fecha, true)))}</dd>

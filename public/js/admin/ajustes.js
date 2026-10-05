@@ -63,8 +63,14 @@ export async function vistaAjustes(cont) {
               <div class="campo"><label for="r-tz">Zona horaria</label><select id="r-tz" name="zona_horaria">${zonas.map((z) => `<option ${z === n.zona_horaria ? 'selected' : ''}>${esc(z)}</option>`).join('')}</select></div>
               <div class="campo"><label for="r-mon">Moneda</label><select id="r-mon" name="moneda">${['ARS', 'UYU', 'CLP', 'USD', 'EUR', 'MXN', 'COP', 'PEN', 'BRL'].map((m) => `<option ${m === n.moneda ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
             </div>
+            <div class="fila-campos">
+              <div class="campo"><label for="r-sena">Seña para reservar (%)</label><input id="r-sena" name="sena_porcentaje" type="number" min="0" max="100" step="5" value="${n.sena_porcentaje ?? 0}">
+                <span class="ayuda">0 = sin seña.</span></div>
+              <div class="campo"><label for="r-transf">Datos para transferir la seña</label><textarea id="r-transf" name="datos_transferencia" maxlength="300" rows="3" placeholder="Alias: cuerpo.alma.mp&#10;Titular: Noelia …">${esc(n.datos_transferencia)}</textarea></div>
+            </div>
+            <p class="leyenda">Con seña, las reservas web quedan "pendientes" y se confirman solas cuando registrás un pago que la cubre.</p>
             <label class="check"><input type="checkbox" name="confirmacion_automatica" ${n.confirmacion_automatica ? 'checked' : ''}> Confirmar automáticamente las reservas online</label>
-            <p class="leyenda">Si lo desactivás, las reservas web quedan "pendientes" hasta que las confirmes.</p>
+            <p class="leyenda">Si lo desactivás, las reservas web quedan "pendientes" hasta que las confirmes. Si pedís seña, esta opción no se aplica.</p>
             <div class="acciones"><button type="submit" class="btn btn-pri">Guardar reglas</button></div>
           </form>
         </section>
@@ -135,6 +141,8 @@ export async function vistaAjustes(cont) {
         anticipacion_max_dias: num('anticipacion_max_dias', 1, 365, 'Días de anticipación'),
         cancelacion_min_horas: num('cancelacion_min_horas', 0, 720, 'Cancelación'),
         max_turnos_activos: num('max_turnos_activos', 1, 50, 'Turnos activos'),
+        sena_porcentaje: num('sena_porcentaje', 0, 100, 'Seña'),
+        datos_transferencia: d.datos_transferencia || null,
         politica_cancelacion: d.politica_cancelacion || null,
         zona_horaria: d.zona_horaria,
         moneda: d.moneda,

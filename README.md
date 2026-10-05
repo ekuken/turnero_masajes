@@ -96,6 +96,9 @@ Tres capas: el botón se bloquea mientras se envía; la función `crear_reserva`
 ### Zona horaria
 Todas las fechas se calculan en la zona del negocio (Buenos Aires por defecto, configurable en Ajustes), sin importar dónde esté el servidor o el visitante.
 
+### Seña
+En **Ajustes → Reglas de reserva** se define el porcentaje de seña (50% por defecto; 0 = sin seña) y los datos para transferir (alias, CBU, titular). Con seña activa, las reservas web quedan **pendientes**: al reservar, la clienta ve el monto y los datos de transferencia, y recibe el mismo detalle en el aviso por WhatsApp. Cuando registrás en el turno un pago que cubre la seña, el turno se **confirma solo** y se genera el aviso de confirmación.
+
 ### Pagos
 Cada turno puede tener varios pagos (seña + saldo, por ejemplo). El estado (pendiente, parcial, pagado, cancelado/reembolsado) se recalcula solo al registrar, anular o reembolsar un pago, o si cambia el precio; también se puede cambiar a mano. Los pagos nunca se borran: se anulan o se marcan como reembolsados, y quedan en el historial.
 
@@ -103,7 +106,7 @@ Cada turno puede tener varios pagos (seña + saldo, por ejemplo). El estado (pen
 
 ## Avisos a clientes (notificaciones)
 
-El sistema ya genera y guarda en una cola (`notificaciones`) cada aviso de **confirmación, cancelación y cambio de horario**, con el texto listo. Si el cliente dejó email, el aviso va por email; si no, por WhatsApp.
+El sistema ya genera y guarda en una cola (`notificaciones`) cada aviso de **confirmación, cancelación y cambio de horario**, con el texto listo. Todos los avisos van por WhatsApp al teléfono que dejó el cliente.
 
 **Sin configurar nada**: en el panel, sección **Avisos a clientes**, cada aviso tiene un botón que abre WhatsApp (o tu correo) con el mensaje ya escrito. Un toque y se envía gratis desde tu teléfono.
 

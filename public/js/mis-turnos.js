@@ -43,12 +43,16 @@ async function cargar() {
 
   const proximos = data.turnos.filter((t) => t.futuro && ['pendiente', 'confirmado', 'en_curso'].includes(t.estado)).reverse();
   const historial = data.turnos.filter((t) => !proximos.includes(t));
+  const fila = (t) => filaTurno(t, data.datos_transferencia);
   $('#lista-proximos').innerHTML = proximos.length ? proximos.map(fila).join('') : '<p class="vacio">No tenés turnos próximos. <a href="index.html#reservar">Reservá uno</a>.</p>';
   $('#lista-historial').innerHTML = historial.length ? historial.map(fila).join('') : '<p class="vacio">Todavía no hay turnos anteriores.</p>';
 }
 
-function fila(t) {
+function filaTurno(t, datosTransferencia) {
   const d = parseFecha(t.fecha);
+  const sena = t.sena && t.futuro
+    ? `<p class="aviso-sena">Para confirmar este turno falta la seña de <b>${dinero(t.sena, negocio?.moneda || 'ARS')}</b>.${datosTransferencia ? ` Transferí a: <b>${esc(datosTransferencia)}</b>` : ''}</p>`
+    : '';
   let accion = '';
   if (t.solicitud_cancelacion && t.cancelable) {
     accion = '<span class="chip st-pendiente">Cancelación solicitada</span>';
@@ -65,6 +69,7 @@ function fila(t) {
         <strong>${esc(t.servicio)}</strong>
         <small>${esc(t.hora)} a ${esc(t.hora_fin)} h · ${dinero(t.precio, negocio?.moneda || 'ARS')} · Código ${esc(t.codigo)}</small>
         ${t.cancelable ? `<div style="margin-top:.3rem">${chipEstado(t.estado)}</div>` : ''}
+        ${sena}
       </div>
       <div>${accion}</div>
     </div>`;

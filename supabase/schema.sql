@@ -53,8 +53,13 @@ create table if not exists public.negocio (
   cancelacion_min_horas   int  not null default 24  check (cancelacion_min_horas between 0 and 720),
   confirmacion_automatica boolean not null default true,
   max_turnos_activos      int  not null default 3   check (max_turnos_activos between 1 and 50),
+  sena_porcentaje         int  not null default 50  check (sena_porcentaje between 0 and 100),  -- 0 = sin seña
+  datos_transferencia     text,                               -- alias / CBU / titular para pagar la seña
   actualizado             timestamptz not null default now()
 );
+-- Columnas agregadas después de la primera versión (para bases ya creadas)
+alter table public.negocio add column if not exists sena_porcentaje int not null default 50 check (sena_porcentaje between 0 and 100);
+alter table public.negocio add column if not exists datos_transferencia text;
 insert into public.negocio (id) values (1) on conflict (id) do nothing;
 
 -- Usuarios del panel (vinculados a Supabase Auth)
@@ -312,6 +317,19 @@ drop trigger if exists negocio_validar on public.negocio;
 create trigger negocio_validar before insert or update on public.negocio
 for each row execute function public.tg_negocio_validar();
 
+-- Seña que pide el negocio para un precio dado (null si no se pide seña)
+create or replace function public.monto_sena(p_precio numeric)
+returns numeric language sql stable security definer set search_path = public as $$
+  select round(p_precio * n.sena_porcentaje / 100.0)
+    from public.negocio n where n.id = 1 and n.sena_porcentaje > 0 and p_precio > 0;
+$$;
+
+-- Importe para mostrar en mensajes: $ 12.500
+create or replace function public.formato_dinero(p numeric)
+returns text language sql immutable as $$
+  select '$ ' || replace(to_char(round(p), 'FM999,999,999,990'), ',', '.');
+$$;
+
 -- Recalcula el estado de pago del turno según los pagos registrados
 create or replace function public.recalcular_estado_pago(p_turno_id bigint)
 returns void language plpgsql security definer set search_path = public as $$
@@ -329,6 +347,11 @@ begin
     when v_pagado >= v_precio then 'pagado'
     else 'parcial' end;
   update public.turnos set estado_pago = v_estado where id = p_turno_id and estado_pago is distinct from v_estado;
+
+  -- Si el turno esperaba la seña y ya está cubierta, se confirma solo (dispara el aviso de confirmación)
+  if v_pagado > 0 and v_pagado >= public.monto_sena(v_precio) then
+    update public.turnos set estado = 'confirmado' where id = p_turno_id and estado = 'pendiente';
+  end if;
 end $$;
 
 create or replace function public.tg_pagos_despues()
@@ -358,7 +381,7 @@ for each row when (old.precio is distinct from new.precio) execute function publ
 create or replace function public.encolar_notificacion(p_turno_id bigint, p_tipo text, p_programada timestamptz default now())
 returns void language plpgsql security definer set search_path = public as $$
 declare
-  v record; n public.negocio; v_canal text; v_dest text; v_asunto text; v_msg text; v_cuando text;
+  v record; n public.negocio; v_canal text; v_dest text; v_asunto text; v_msg text; v_cuando text; v_sena numeric;
 begin
   select t.*, c.nombre as c_nombre, c.email as c_email, c.telefono as c_tel, s.nombre as s_nombre
     into v
@@ -367,17 +390,23 @@ begin
   if not found then return; end if;
   select * into n from public.negocio where id = 1;
 
-  if v.c_email is not null then v_canal := 'email'; v_dest := v.c_email;
-  else v_canal := 'whatsapp'; v_dest := v.c_tel; end if;
+  -- Los avisos van siempre por WhatsApp (el teléfono es obligatorio al reservar)
+  v_canal := 'whatsapp'; v_dest := v.c_tel;
 
   v_cuando := to_char(v.fecha, 'DD/MM/YYYY') || ' a las ' || to_char(v.hora_inicio, 'HH24:MI');
 
   if p_tipo = 'confirmacion' then
     v_asunto := 'Tu turno en ' || n.nombre;
+    v_sena := case when v.estado = 'pendiente' and v.estado_pago = 'pendiente' then public.monto_sena(v.precio) end;
     v_msg := 'Hola ' || v.c_nombre || '. '
           || case when v.estado = 'pendiente' then 'Recibimos tu solicitud de turno: '
                   else 'Tu turno está confirmado: ' end
           || v.s_nombre || ', el ' || v_cuando || '.'
+          || case when v_sena is not null then
+               ' Para confirmarlo, transferí la seña de ' || public.formato_dinero(v_sena)
+               || coalesce(' a: ' || n.datos_transferencia, '')
+               || '. Envianos el comprobante por este medio.'
+             else '' end
           || coalesce(' Dirección: ' || n.direccion || '.', '')
           || coalesce(' ' || n.indicaciones_llegada, '')
           || ' Código de turno: ' || v.codigo || '.'
@@ -551,7 +580,8 @@ returns json language sql stable security definer set search_path = public as $$
         'nombre', n.nombre, 'descripcion', n.descripcion, 'telefono', n.telefono, 'whatsapp', n.whatsapp,
         'email', n.email, 'instagram', n.instagram, 'ubicacion', n.ubicacion_publica, 'imagen_url', n.imagen_url,
         'politica_cancelacion', n.politica_cancelacion, 'zona_horaria', n.zona_horaria, 'moneda', n.moneda,
-        'anticipacion_max_dias', n.anticipacion_max_dias, 'confirmacion_automatica', n.confirmacion_automatica)
+        'anticipacion_max_dias', n.anticipacion_max_dias, 'confirmacion_automatica', n.confirmacion_automatica,
+        'sena_porcentaje', n.sena_porcentaje)
       from public.negocio n where n.id = 1),
     'servicios', coalesce((select json_agg(json_build_object(
         'id', s.id, 'nombre', s.nombre, 'descripcion', s.descripcion, 'duracion', s.duracion,
@@ -575,7 +605,7 @@ create or replace function public.crear_reserva(
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare
   n public.negocio; s public.servicios; c public.clientes; t public.turnos;
-  v_hora time; v_tel text; v_email text; v_hoy date; v_activos int;
+  v_hora time; v_tel text; v_email text; v_hoy date; v_activos int; v_sena numeric;
 begin
   select * into n from public.negocio where id = 1;
   v_hoy := (now() at time zone n.zona_horaria)::date;
@@ -627,11 +657,15 @@ begin
       using errcode = 'P0001';
   end if;
 
+  -- Si se pide seña, el turno queda pendiente hasta que se registre el pago
+  v_sena := public.monto_sena(s.precio);
+
   begin
     insert into public.turnos (cliente_id, servicio_id, fecha, hora_inicio, hora_fin, descanso_min,
                                estado, precio, observaciones, origen)
     values (c.id, s.id, p_fecha, v_hora, (p_fecha + v_hora + s.duracion * interval '1 minute')::time,
-            n.descanso_min, case when n.confirmacion_automatica then 'confirmado' else 'pendiente' end,
+            n.descanso_min,
+            case when v_sena is null and n.confirmacion_automatica then 'confirmado' else 'pendiente' end,
             s.precio, p_observaciones, 'web')
     returning * into t;
   exception when exclusion_violation then
@@ -644,7 +678,8 @@ begin
     'fecha', t.fecha, 'hora', to_char(t.hora_inicio, 'HH24:MI'), 'hora_fin', to_char(t.hora_fin, 'HH24:MI'),
     'cliente', json_build_object('nombre', p_nombre, 'apellido', p_apellido, 'telefono', btrim(p_telefono), 'email', v_email),
     'direccion', n.direccion, 'indicaciones', n.indicaciones_llegada,
-    'politica_cancelacion', n.politica_cancelacion);
+    'politica_cancelacion', n.politica_cancelacion,
+    'sena', v_sena, 'sena_porcentaje', n.sena_porcentaje, 'datos_transferencia', n.datos_transferencia);
 end $$;
 
 -- Busca un turno por código + teléfono (ambos deben coincidir)
@@ -674,11 +709,13 @@ begin
     'cliente', (select json_build_object('nombre', c.nombre, 'apellido', c.apellido) from public.clientes c where c.id = t.cliente_id),
     'cancelacion_min_horas', n.cancelacion_min_horas,
     'politica_cancelacion', n.politica_cancelacion,
+    'datos_transferencia', n.datos_transferencia,
     'turnos', coalesce((select json_agg(json_build_object(
         'codigo', tu.codigo, 'servicio', s.nombre, 'fecha', tu.fecha,
         'hora', to_char(tu.hora_inicio, 'HH24:MI'), 'hora_fin', to_char(tu.hora_fin, 'HH24:MI'),
         'precio', tu.precio, 'estado', tu.estado, 'estado_pago', tu.estado_pago,
         'solicitud_cancelacion', tu.solicitud_cancelacion,
+        'sena', case when tu.estado = 'pendiente' and tu.estado_pago = 'pendiente' then public.monto_sena(tu.precio) end,
         'futuro', (tu.fecha + tu.hora_inicio) > v_ahora,
         'cancelable', tu.estado in ('pendiente', 'confirmado') and (tu.fecha + tu.hora_inicio) > v_ahora,
         'cancelacion_directa', (tu.fecha + tu.hora_inicio) >= v_ahora + n.cancelacion_min_horas * interval '1 hour'
